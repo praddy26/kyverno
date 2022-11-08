@@ -783,7 +783,14 @@ func getAndCompareResource(path string, engineResource unstructured.Unstructured
 		fmt.Printf("Error: failed to load resources\nCause: %s\n", err)
 		return ""
 	}
-	matched, err := generate.ValidateResourceWithPattern(log.Log, engineResource.UnstructuredContent(), userResource.UnstructuredContent())
+
+	generatedObj := engineResource.UnstructuredContent()
+
+	if isGenerate {
+		removeKyvernoGeneratedLabels(generatedObj)
+	}
+
+	matched, err := generate.ValidateResourceWithPattern(log.Log, generatedObj, userResource.UnstructuredContent())
 	if err != nil {
 		log.Log.V(3).Info(resourceType+" mismatch", "error", err.Error())
 		status = "fail"
@@ -793,6 +800,25 @@ func getAndCompareResource(path string, engineResource unstructured.Unstructured
 		status = "pass"
 	}
 	return status
+}
+
+func removeKyvernoGeneratedLabels(obj map[string]interface{}) {
+	if obj["metadata"] != nil {
+		labels := obj["metadata"].(map[string]interface{})["labels"]
+
+		if labels != nil {
+			mapLabel := labels.(map[string]interface{})
+			for k := range mapLabel {
+				if strings.Contains(k, "kyverno.io") || strings.Contains(k, "policy.kyverno.io") || strings.Contains(k, "app.kubernetes.io") {
+					delete(mapLabel, k)
+				}
+			}
+
+			if len(mapLabel) == 0 {
+				delete(obj["metadata"].(map[string]interface{}), "labels")
+			}
+		}
+	}
 }
 
 func buildMessage(resp *response.EngineResponse) string {

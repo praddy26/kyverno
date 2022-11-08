@@ -27,6 +27,13 @@ func ValidateResourceWithPattern(log logr.Logger, resource, pattern interface{})
 	if err != nil {
 		return elemPath, err
 	}
+
+	// validate if any additional metadata/data is present in the resource
+	elemPath, err = validateResourceElement(log, pattern, resource, resource, "/")
+	if err != nil {
+		return elemPath, err
+	}
+
 	return "", nil
 }
 
